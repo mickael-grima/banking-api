@@ -1,0 +1,45 @@
+version: "3.8"
+services:
+  mysqldb:
+    container_name: mysqldb
+    image: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 'password'
+      MYSQL_USER: 'user'
+      MYSQL_PASSWORD: 'password'
+      MYSQL_DATABASE: 'banking-api'
+    healthcheck:
+      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
+      timeout: 2s
+      retries: 20
+    volumes:
+      - './.mysql/data:/var/lib/mysql'
+    networks:
+      - backend
+  bankingapi:
+    build: .
+    container_name: bankingapi
+    command: [ "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8080", "--log-level", "critical", "--reload" ]
+    environment:
+      MYSQL_DB_ADDRESS: 'mysqldb:3306'
+      MYSQL_USER: 'user'
+      MYSQL_PASSWORD: 'password'
+      MYSQL_DATABASE: 'banking-api'
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/ping" ]
+      interval: 20s
+      timeout: 3s
+      retries: 3
+    links:
+      - mysqldb
+    depends_on:
+      mysqldb:
+        condition: service_healthy
+    volumes:
+      - "./src:/home/src"  # needed for the `--reload` functionality
+    networks:
+      - backend
+networks:
+  backend:

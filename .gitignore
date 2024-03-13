@@ -1,0 +1,11 @@
+# tests related
+.tox
+.pytest_cache
+htmlcov
+.coverage
+
+# local environment
+.env
+
+# mysql data
+.mysql

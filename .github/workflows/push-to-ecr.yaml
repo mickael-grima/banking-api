@@ -1,0 +1,52 @@
+name: Push To ECR workflow
+
+on:
+  pull_request:
+    branches:
+      - "master"
+    paths-ignore:
+      - "README.md"
+      - "docker-compose.yaml"
+      - ".gitignore"
+      - ".python-version"
+      - "tests/**"
+      - "tox.ini"
+      - ".coveragerc"
+
+jobs:
+  push-to-ecr:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: "eu-central-1"  # the closest one to munich
+      AWS_ACCOUNT: "<add hear your account id>"
+
+    # inspired by https://towardsaws.com/build-push-docker-image-to-aws-ecr-using-github-actions-8396888a8f9e
+    steps:
+      - uses: actions/checkout@v4
+
+      # get the latest git commit: we use it as the docker tag
+      - name: Publishing context
+        id: publishing_context
+        run: |
+          GITHUB_SHA_SHORT=$(echo ${GITHUB_SHA} | cut -c1-8)
+          echo "img_tag=${GITHUB_SHA_SHORT}" >> $GITHUB_OUTPUT
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          # it is more secured to work with role, instead of using credentials
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT }}:role/github-action-cd-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: banking-api
+          IMAGE_TAG: ${{ steps.publishing_context.outputs.img_tag }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG

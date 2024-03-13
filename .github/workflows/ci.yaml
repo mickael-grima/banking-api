@@ -1,0 +1,108 @@
+name: CI Python
+
+on:
+  pull_request:
+    branches:
+      # this would usually be `master`, but to not trigger unwanted
+      # workflow, let's use another name instead
+      - "your-main-branch"
+    paths-ignore:
+      - "README.md"
+      - ".gitignore"
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      filters: ${{ steps.filter.outputs.changes }}
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            unittests:
+              - 'src/**'
+              - 'tests/unittests/**'
+              - 'requirements.txt'
+              - 'tox.ini'
+              - '.coveragerc'
+            integration_tests:
+              - 'src/**'
+              - 'tests/integration_tests/**'
+              - 'docker-compose.yaml'
+              - 'Dockerfile'
+              - 'requirements.txt'
+            vulnerabilities:
+              - 'src/**'
+              - 'Dockerfile'
+              - 'requirements.txt'
+
+
+  unittests:
+    # This job runs the unittests
+    needs: changes
+    if: ${{ needs.changes.outputs.filters.unittests == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Important to have the same python version than the one used for production
+      - name: Read Python version
+        shell: bash
+        run: echo ::set-output name=PYTHON_VERSION::$(cat .python-version)
+        id: python_version
+
+      - uses: actions/setup-python@v3
+        with:
+          python-version: '${{ steps.python_version.outputs.PYTHON_VERSION }}'
+          cache: pip
+
+      # install dependencies for testing
+      - name: Install tox
+        shell: bash
+        run: pip install tox
+
+      # run the tests
+      - name: Run tests
+        shell: bash
+        run: tox
+
+  integration-test:
+    # this job runs the integration tests
+    needs: changes
+    if: ${{ needs.changes.outputs.filters.integration_tests == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: adambirds/docker-compose-action@v1.3.0
+        with:
+          compose-file: "./docker-compose.yaml"
+          test-command: "cd tests/integration_tests && bash run.sh"
+
+  vulnerabilities:
+    # this job checks the docker image vulnerabilities using trivy
+    needs: changes
+    if: ${{ needs.changes.outputs.filters.vulnerabilities == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build an image from Dockerfile
+        run: |
+          docker build -t banking-api .
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'banking-api'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
