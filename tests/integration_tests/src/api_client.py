@@ -40,8 +40,7 @@ class APIClient:
 
     async def get(self, path: str, params: dict = None) -> APIResponse:
         """GET call to `self._host/path?params"""
-        async with self._session.get(
-                f"{self._host}{path}", params=params) as res:
+        async with self._session.get(f"{self._host}{path}", params=params) as res:
             return APIResponse(
                 status_code=res.status,
                 json_body=await res.json(),
@@ -53,8 +52,7 @@ class APIClient:
         # has a different utc_timestamp
         if path.startswith("/transfer"):
             await asyncio.sleep(1)
-        async with self._session.post(
-                f"{self._host}{path}", params=params) as res:
+        async with self._session.post(f"{self._host}{path}", params=params) as res:
             return APIResponse(
                 status_code=res.status,
                 json_body=await res.json(),

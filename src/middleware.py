@@ -1,5 +1,5 @@
 import time
-from typing import Callable, Awaitable
+from typing import Awaitable, Callable
 
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
@@ -16,14 +16,13 @@ class LoggerMiddleware(BaseHTTPMiddleware):
     This middleware catches error and return the appropriate response
     It also send an info log with useful information for every request
     """
+
     # some endpoints don't require any logging
     # they should be added to this set
     excluded_paths = {"/ping"}
 
     async def dispatch(
-            self,
-            request: Request,
-            call_next: Callable[[Request], Awaitable[Response]]
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ):
         status_code = 200
         start = time.time()
@@ -36,10 +35,9 @@ class LoggerMiddleware(BaseHTTPMiddleware):
             # Those errors are expected, and don't require any logging
             status_code = err.http_status
             return JSONResponse(
-                {"error": "NOT_FOUND", "message": str(err)},
-                status_code=status_code
+                {"error": "NOT_FOUND", "message": str(err)}, status_code=status_code
             )
-        except:
+        except Exception as _:
             # Unexpected errors
             status_code = 500
             logger.exception(
@@ -48,11 +46,11 @@ class LoggerMiddleware(BaseHTTPMiddleware):
                     "method": request.method,
                     "path": request.url.path,
                     "status_code": status_code,
-                }
+                },
             )
             return JSONResponse(
                 {"error": "INTERNAL_ERROR", "message": "Oops! Something went wrong!"},
-                status_code=status_code
+                status_code=status_code,
             )
         finally:
             if request.url.path not in self.excluded_paths:
@@ -64,6 +62,5 @@ class LoggerMiddleware(BaseHTTPMiddleware):
                         "path": request.url.path,
                         "status_code": status_code,
                         "latency": time.time() - start,
-                    }
+                    },
                 )
-

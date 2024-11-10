@@ -102,9 +102,7 @@ async def get_balances(account_id: int):
     response_model_exclude_defaults=True,
 )
 async def accounts_transfer(
-        source_id: int,
-        target_id: int,
-        amount: float
+    source_id: int, target_id: int, amount: float
 ) -> models.Transfer:
     return await handler.transfer(source_id, target_id, amount)
 
@@ -115,7 +113,6 @@ async def accounts_transfer(
     response_model=list[models.Transfer],
 )
 async def get_transfer_history(
-        account_id: int,
-        transfer_type: models.TransferType = models.TransferType.any
+    account_id: int, transfer_type: models.TransferType = models.TransferType.any
 ):
     return await handler.get_transfer_history(account_id, type_=transfer_type)

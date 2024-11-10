@@ -1,9 +1,11 @@
-from unittest.mock import patch, AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from freezegun import freeze_time
 
-from .context import handler as hd, models, exceptions as exc
+from .context import exceptions as exc
+from .context import handler as hd
+from .context import models
 from .utils import check_error
 
 
@@ -22,7 +24,8 @@ async def test_Handler_create():
             -123,
             ValueError(
                 "[Create Account] Initial deposit is negative or 0, "
-                "when it should be positive"),
+                "when it should be positive"
+            ),
         ),
         (  # new customer John should be created
             "John",
@@ -33,8 +36,8 @@ async def test_Handler_create():
             "Kevin",
             234.56,
             models.Account(id=789, owner_id=456, deposit=234.56),
-        )
-    ]
+        ),
+    ],
 )
 @pytest.mark.asyncio
 async def test_Handler_create_account(customer, deposit, expected):
@@ -59,23 +62,19 @@ async def test_Handler_create_account(customer, deposit, expected):
             0,
             exc.NotFoundException("Account with id=0 doesn't exist"),
         ),
-        (
-            123,
-            [models.Account(id=123, owner_id=456, deposit=234.56)]
-        ),
+        (123, [models.Account(id=123, owner_id=456, deposit=234.56)]),
         (
             None,
             [
                 models.Account(id=123, owner_id=456, deposit=234.56),
-                models.Account(id=111, owner_id=789, deposit=100.),
-            ]
+                models.Account(id=111, owner_id=789, deposit=100.0),
+            ],
         ),
-    ]
+    ],
 )
 @pytest.mark.asyncio
 async def test_Handler_get_accounts(
-        account_id: int,
-        expected: Exception | list[models.Account]
+    account_id: int, expected: Exception | list[models.Account]
 ):
     with patch("database.Database.create", AsyncMock()):
         handler = await hd.Handler.create()
@@ -83,14 +82,18 @@ async def test_Handler_get_accounts(
             case 0:
                 handler._db.execute = AsyncMock(return_value=[])
             case 123:
-                handler._db.execute = AsyncMock(return_value=[
-                    [123, 456, 234.56],
-                ])
+                handler._db.execute = AsyncMock(
+                    return_value=[
+                        [123, 456, 234.56],
+                    ]
+                )
             case None:
-                handler._db.execute = AsyncMock(return_value=[
-                    [123, 456, 234.56],
-                    [111, 789, 100.],
-                ])
+                handler._db.execute = AsyncMock(
+                    return_value=[
+                        [123, 456, 234.56],
+                        [111, 789, 100.0],
+                    ]
+                )
         with check_error(expected):
             accounts = await handler.get_accounts(account_id=account_id)
             assert accounts == expected
@@ -104,7 +107,8 @@ async def test_Handler_get_accounts(
             -123,
             ValueError(
                 "[Transfer] transfer amount is negative or 0, "
-                "when it should be positive"),
+                "when it should be positive"
+            ),
         ),
         (  # amount is, as expected, positive
             234.56,
@@ -116,7 +120,7 @@ async def test_Handler_get_accounts(
                 amount=234.56,
             ),
         ),
-    ]
+    ],
 )
 @pytest.mark.asyncio
 async def test_Handler_transfer(amount, expected):
@@ -144,25 +148,24 @@ async def test_Handler_transfer(amount, expected):
                 debits=13,
                 balance=12,
             ),
-        )
-    ]
+        ),
+    ],
 )
 @pytest.mark.asyncio
-async def test_Handler_get_balances(
-        account_id: int,
-        expected: models.Balances
-):
+async def test_Handler_get_balances(account_id: int, expected: models.Balances):
     with patch("database.Database.create", AsyncMock()):
         handler = await hd.Handler.create()
         match account_id:
             case 0:  # This account doesn't exist in the DB
                 handler._db.execute = AsyncMock(return_value=[])
             case _:  # all other accounts exist
-                handler._db.execute = AsyncMock(side_effect=[
-                    [[10]],  # initial account's deposit
-                    [[3], [7], [5]],  # credits rows (amount only)
-                    [[6], [7]],  # debits rows (amount only)
-                ])
+                handler._db.execute = AsyncMock(
+                    side_effect=[
+                        [[10]],  # initial account's deposit
+                        [[3], [7], [5]],  # credits rows (amount only)
+                        [[6], [7]],  # debits rows (amount only)
+                    ]
+                )
         with check_error(expected):
             balances = await handler.get_balances(account_id)
             assert balances == expected
@@ -204,7 +207,7 @@ async def test_Handler_get_balances(
                     to_id=123,
                     amount=25,
                 ),
-            ]
+            ],
         ),
         (  # credits transfers
             123,
@@ -226,7 +229,7 @@ async def test_Handler_get_balances(
                     to_id=123,
                     amount=25,
                 ),
-            ]
+            ],
         ),
         (  # debits transfers
             123,
@@ -240,15 +243,13 @@ async def test_Handler_get_balances(
                     to_id=789,
                     amount=200,
                 ),
-            ]
+            ],
         ),
-    ]
+    ],
 )
 @pytest.mark.asyncio
 async def test_Handler_get_transfer_history(
-        account_id: int,
-        transfer_type: models.TransferType,
-        expected: list[models.Transfer]
+    account_id: int, transfer_type: models.TransferType, expected: list[models.Transfer]
 ):
     with patch("database.Database.create", AsyncMock()):
         handler = await hd.Handler.create()
@@ -256,22 +257,29 @@ async def test_Handler_get_transfer_history(
             case (0, _):  # This account doesn't exist in the DB
                 handler._db.execute = AsyncMock(return_value=[])
             case (_, models.TransferType.any):
-                handler._db.execute = AsyncMock(side_effect=[
-                    [[account_id, "Kevin"]],
-                    [[1, 456, 1710137580, 100.], [3, 789, 1710137600, 25.]],
-                    [[2, 789, 1710137590, 200.]],
-                ])
+                handler._db.execute = AsyncMock(
+                    side_effect=[
+                        [[account_id, "Kevin"]],
+                        [[1, 456, 1710137580, 100.0], [3, 789, 1710137600, 25.0]],
+                        [[2, 789, 1710137590, 200.0]],
+                    ]
+                )
             case (_, models.TransferType.credit):
-                handler._db.execute = AsyncMock(side_effect=[
-                    [[account_id, "Kevin"]],
-                    [[1, 456, 1710137580, 100.], [3, 789, 1710137600, 25.]],
-                ])
+                handler._db.execute = AsyncMock(
+                    side_effect=[
+                        [[account_id, "Kevin"]],
+                        [[1, 456, 1710137580, 100.0], [3, 789, 1710137600, 25.0]],
+                    ]
+                )
             case (_, models.TransferType.debit):
-                handler._db.execute = AsyncMock(side_effect=[
-                    [[account_id, "Kevin"]],
-                    [[2, 789, 1710137590, 200.]],
-                ])
+                handler._db.execute = AsyncMock(
+                    side_effect=[
+                        [[account_id, "Kevin"]],
+                        [[2, 789, 1710137590, 200.0]],
+                    ]
+                )
         with check_error(expected):
             transfers = await handler.get_transfer_history(
-                account_id, type_=transfer_type)
+                account_id, type_=transfer_type
+            )
             assert transfers == expected

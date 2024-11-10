@@ -1,44 +1,45 @@
 from contextlib import asynccontextmanager
-from unittest.mock import patch, AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
 from .context import database as db
-from .utils import set_environments, check_error
+from .utils import check_error, set_environments
 
 
 @pytest.mark.parametrize(
     "MYSQL_DB_ADDRESS,MYSQL_USER,MYSQL_PASSWORD,MYSQL_DATABASE,expected",
     [
         (  # everything alright
-                "localhost:3306",
-                "user",
-                "password",
-                "dbname",
-                db.DBConnectionData(
-                    host="localhost", port=3306,
-                    user="user", password="password",
-                    dbname="dbname"
-                ),
+            "localhost:3306",
+            "user",
+            "password",
+            "dbname",
+            db.DBConnectionData(
+                host="localhost",
+                port=3306,
+                user="user",
+                password="password",
+                dbname="dbname",
+            ),
         ),
         (  # wrong port format
-                "localhost:unknown",
-                "user",
-                "password",
-                "dbname",
-                ValueError("Error: Wrong db port format: unknown!"),
+            "localhost:unknown",
+            "user",
+            "password",
+            "dbname",
+            ValueError("Error: Wrong db port format: unknown!"),
         ),
-    ]
+    ],
 )
 def test_DBConnectionData_from_environment(
-        MYSQL_DB_ADDRESS, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE,
-        expected
+    MYSQL_DB_ADDRESS, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE, expected
 ):
     envs = {
         "MYSQL_DB_ADDRESS": MYSQL_DB_ADDRESS,
         "MYSQL_USER": MYSQL_USER,
         "MYSQL_PASSWORD": MYSQL_PASSWORD,
-        "MYSQL_DATABASE": MYSQL_DATABASE
+        "MYSQL_DATABASE": MYSQL_DATABASE,
     }
     with set_environments(envs):
         with check_error(expected):
@@ -112,10 +113,7 @@ async def test_Database_create_tables():
     with set_environments(db_env):
         # mock the create_pool method
         pool_mocked = create_mock_pool()
-        with patch(
-                "aiomysql.create_pool",
-                AsyncMock(return_value=pool_mocked)
-        ):
+        with patch("aiomysql.create_pool", AsyncMock(return_value=pool_mocked)):
             mydb = await db.Database.create()
             await mydb.create_tables()
 
@@ -141,10 +139,7 @@ async def test_Database_create_tables():
                     "PRIMARY KEY (id))"
                 ),
             }
-            queries = {
-                m.execute.call_args.args[0]
-                for m in pool_mocked.last_cursors
-            }
+            queries = {m.execute.call_args.args[0] for m in pool_mocked.last_cursors}
             assert queries == expected_creation_queries
 
 
@@ -152,36 +147,34 @@ async def test_Database_create_tables():
     "table,field_values,expected_query",
     [
         (  # missing value for the given field -> failing with ValueError
-                db.Tables.accounts,
-                ("owner_id",),
-                ValueError("Each inserted value should have a field name"),
+            db.Tables.accounts,
+            ("owner_id",),
+            ValueError("Each inserted value should have a field name"),
         ),
         (  # insert integer and double
-                db.Tables.accounts,
-                ("owner_id", 123, "deposit", 214.56),
-                "INSERT INTO accounts (owner_id, deposit) VALUES (123, 214.56)",
+            db.Tables.accounts,
+            ("owner_id", 123, "deposit", 214.56),
+            "INSERT INTO accounts (owner_id, deposit) VALUES (123, 214.56)",
         ),
         (  # insert string
-                db.Tables.customers,
-                ("name", "John Smith",),
-                "INSERT INTO customers (name) VALUES ('John Smith')",
-        )
-    ]
+            db.Tables.customers,
+            (
+                "name",
+                "John Smith",
+            ),
+            "INSERT INTO customers (name) VALUES ('John Smith')",
+        ),
+    ],
 )
 @pytest.mark.asyncio
 async def test_Database_insert(
-        table: db.Tables,
-        field_values: tuple[str | int | float],
-        expected_query: str
+    table: db.Tables, field_values: tuple[str | int | float], expected_query: str
 ):
     global db_env
     with set_environments(db_env):
         # mock the create_pool method
         pool_mocked = create_mock_pool()
-        with patch(
-                "aiomysql.create_pool",
-                AsyncMock(return_value=pool_mocked)
-        ):
+        with patch("aiomysql.create_pool", AsyncMock(return_value=pool_mocked)):
             mydb = await db.Database.create()
             with check_error(expected_query):
                 lastid = await mydb.insert(table, *field_values)
@@ -197,11 +190,9 @@ async def test_Database_execute():
         # mock the create_pool method
         returned_data = [[123, 234.45]]
         pool_mocked = create_mock_pool(returned_data=returned_data)
-        with patch(
-                "aiomysql.create_pool",
-                AsyncMock(return_value=pool_mocked)
-        ):
+        with patch("aiomysql.create_pool", AsyncMock(return_value=pool_mocked)):
             mydb = await db.Database.create()
             data = await mydb.execute(
-                "SELECT owner_id, deposit FROM accounts WHERE id=1")
+                "SELECT owner_id, deposit FROM accounts WHERE id=1"
+            )
             assert data == returned_data

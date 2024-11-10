@@ -10,4 +10,5 @@ class NotFoundException(HTTPException):
     This exception should be raised when we want to return a 404
     The fastapi catches this exception and return a 404 response
     """
+
     http_status = status.HTTP_404_NOT_FOUND

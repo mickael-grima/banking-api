@@ -1,9 +1,8 @@
 import dataclasses
-from typing import Callable, Awaitable
-
-from termcolor import colored
+from typing import Awaitable, Callable
 
 from api_client import APIClient, APIResponse
+from termcolor import colored
 
 
 @dataclasses.dataclass
@@ -32,7 +31,7 @@ class TestCase:
         # remove timestamp from the response (too volatile)
         resp.remove_fields("utc_timestamp")
         if resp.json_body != self.response.json_body:
-            raise ValueError(f"Wrong response body=\"{resp.json_body}\"")
+            raise ValueError(f'Wrong response body="{resp.json_body}"')
 
     def __repr__(self) -> str:
         return (
@@ -46,6 +45,7 @@ class Tester:
     This class implements functionalities to test the API calls
     responses
     """
+
     def __init__(self, api_client: APIClient, test_cases: list[TestCase]):
         self._api_client = api_client
         self._test_cases = test_cases
@@ -65,11 +65,7 @@ class Tester:
                 print_failure(testcase, exc)
                 success = False
                 break
-        result = (
-            colored("SUCCESS", "green")
-            if success else
-            colored("FAILURE", "red")
-        )
+        result = colored("SUCCESS", "green") if success else colored("FAILURE", "red")
         print(f"Finished testing! Result={result}")
 
     async def __test(self, testcase: TestCase):
@@ -84,12 +80,10 @@ class Tester:
                 caller = self._api_client.post
             case _:
                 raise ValueError(
-                    f"method={testcase.request.method.upper()} not supported")
+                    f"method={testcase.request.method.upper()} not supported"
+                )
 
-        resp = await caller(
-            testcase.request.path,
-            params=testcase.request.params
-        )
+        resp = await caller(testcase.request.path, params=testcase.request.params)
         testcase.check_response(resp)
 
 

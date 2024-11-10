@@ -1,9 +1,10 @@
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
-from .context import server, exceptions as exc, models
+from .context import exceptions as exc
+from .context import models, server
 
 # By default the TestClient will raise any exceptions that occur in the
 # application.
@@ -44,7 +45,7 @@ test_cases = [
         None,
         [
             {"id": 123, "owner_id": 456, "deposit": 234.56},
-            {"id": 111, "owner_id": 456, "deposit": 100.}
+            {"id": 111, "owner_id": 456, "deposit": 100.0},
         ],
         200,
     ),
@@ -69,7 +70,13 @@ test_cases = [
         "/account/balances",
         {"account_id": 123},
         None,
-        {"account_id": 123, "deposit": 10., "credits": 10., "debits": 13.56, "balance": 6.44},
+        {
+            "account_id": 123,
+            "deposit": 10.0,
+            "credits": 10.0,
+            "debits": 13.56,
+            "balance": 6.44,
+        },
         200,
     ),
     (  # get account's balances - account does not exist
@@ -98,7 +105,7 @@ test_cases = [
             "utc_timestamp": 1710137580,
             "from_id": 1,
             "to_id": 2,
-            "amount": 234.56
+            "amount": 234.56,
         },
         201,
     ),
@@ -122,7 +129,7 @@ test_cases = [
                 "utc_timestamp": 1710137580,
                 "from_id": 1,
                 "to_id": 123,
-                "amount": 100
+                "amount": 100,
             },
             {
                 "id": 2,
@@ -130,10 +137,10 @@ test_cases = [
                 "utc_timestamp": 1710137590,
                 "from_id": 123,
                 "to_id": 2,
-                "amount": 25
+                "amount": 25,
             },
         ],
-        200
+        200,
     ),
     (  # get transfer history for non-existing account
         "GET",
@@ -141,7 +148,7 @@ test_cases = [
         {"account_id": 123},
         exc.NotFoundException("account does not exist"),
         {"error": "NOT_FOUND", "message": "account does not exist"},
-        404
+        404,
     ),
     (  # make transfer history - unexpected raised error
         "GET",
@@ -149,16 +156,13 @@ test_cases = [
         {"account_id": 123},
         ValueError("whatever error"),
         {"error": "INTERNAL_ERROR", "message": "Oops! Something went wrong!"},
-        500
+        500,
     ),
 ]
 
 
 def mock_handler(
-        method: str,
-        path: str,
-        err: Exception | None,
-        data: dict | list[dict]
+    method: str, path: str, err: Exception | None, data: dict | list[dict]
 ) -> Mock:
     """
     Depending on the method & path, mock the handler accordingly
@@ -179,8 +183,7 @@ def mock_handler(
                     res = AsyncMock(return_value=models.Account(**data))
                     handler.create_account = res
                 if method.upper() == "GET":
-                    res = AsyncMock(
-                        return_value=[models.Account(**d) for d in data])
+                    res = AsyncMock(return_value=[models.Account(**d) for d in data])
                     handler.get_accounts = res
             case "/account/balances":
                 res = AsyncMock(return_value=models.Balances(**data))
@@ -189,23 +192,21 @@ def mock_handler(
                 res = AsyncMock(return_value=models.Transfer(**data))
                 handler.transfer = res
             case "/transfer/history":
-                res = AsyncMock(
-                    return_value=[models.Transfer(**d) for d in data])
+                res = AsyncMock(return_value=[models.Transfer(**d) for d in data])
                 handler.get_transfer_history = res
     return handler
 
 
 @pytest.mark.parametrize(
-    "method,path,params,handler_error,response_body,response_status_code",
-    test_cases
+    "method,path,params,handler_error,response_body,response_status_code", test_cases
 )
 def test_routes(
-        method: str,
-        path: str,
-        params: dict[str, str],
-        handler_error: Exception | None,
-        response_body: dict | list[dict],
-        response_status_code: int,
+    method: str,
+    path: str,
+    params: dict[str, str],
+    handler_error: Exception | None,
+    response_body: dict | list[dict],
+    response_status_code: int,
 ):
     # mock handler
     server.handler = mock_handler(method, path, handler_error, response_body)
@@ -238,11 +239,8 @@ async def test_lifespan():
         server.handler = None
 
     # error during creation
-    with patch(
-            "handler.Handler.create",
-            AsyncMock(side_effect=ValueError("error"))):
+    with patch("handler.Handler.create", AsyncMock(side_effect=ValueError("error"))):
         with pytest.raises(ValueError) as exc_info:
             async with server.lifespan(server.app):
                 pass
         assert exc_info.type is ValueError
-

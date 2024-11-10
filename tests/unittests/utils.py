@@ -54,9 +54,11 @@ def check_error(expected: Any):
         if not isinstance(err, expected.__class__):
             raise AssertionError(
                 f"Expecting an error, but not the right class: "
-                f"{err.__class__} instead of {expected.__class__}")
+                f"{err.__class__} instead of {expected.__class__}"
+            )
         if str(err) != str(expected):
             raise AssertionError(
                 f"Expecting an error of class {expected.__class__}, "
-                f"but the message doesn't match: got \"{err}\" "
-                f"instead of \"{expected}\"")
+                f'but the message doesn\'t match: got "{err}" '
+                f'instead of "{expected}"'
+            )

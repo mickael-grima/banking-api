@@ -19,11 +19,7 @@ class Handler(object):
         await db.create_tables()
         return cls(db)
 
-    async def create_account(
-            self,
-            customer: str,
-            deposit: float
-    ) -> models.Account:
+    async def create_account(self, customer: str, deposit: float) -> models.Account:
         """
         Create a customer row in the db, if it doesn't exist yet
         Create a new account associated to this customer
@@ -34,28 +30,24 @@ class Handler(object):
         if deposit <= 0:
             raise ValueError(
                 "[Create Account] Initial deposit is negative or 0, "
-                "when it should be positive")
+                "when it should be positive"
+            )
 
         # create customer if it doesn't exist yet
         owner_id = await self.__get_customer(customer)
         account_id = await self._db.insert(
             Tables.accounts,
-            "owner_id", owner_id,
-            "deposit", deposit,
+            "owner_id",
+            owner_id,
+            "deposit",
+            deposit,
         )
 
-        account = models.Account(
-            id=account_id,
-            owner_id=owner_id,
-            deposit=deposit
-        )
+        account = models.Account(id=account_id, owner_id=owner_id, deposit=deposit)
         logger.debug(f"Successfully created new account={account}")
         return account
 
-    async def get_accounts(
-            self,
-            account_id: int | None = None
-    ) -> list[models.Account]:
+    async def get_accounts(self, account_id: int | None = None) -> list[models.Account]:
         """
         Return all accounts in DB if `account_id` is None
         Otherwise, return the account corresponding to this id
@@ -66,25 +58,16 @@ class Handler(object):
             query += f" WHERE id={account_id}"
         rows = await self._db.execute(query)
         if account_id is not None and not rows:
-            raise NotFoundException(
-                f"Account with id={account_id} doesn't exist")
-        accounts = [
-            models.Account(
-                id=r[0],
-                owner_id=r[1],
-                deposit=r[2]
-            ) for r in rows
-        ]
+            raise NotFoundException(f"Account with id={account_id} doesn't exist")
+        accounts = [models.Account(id=r[0], owner_id=r[1], deposit=r[2]) for r in rows]
         logger.debug(
             f"Successfully found {len(accounts)} accounts from the DB "
-            f"matching account_id={account_id}")
+            f"matching account_id={account_id}"
+        )
         return accounts
 
     async def transfer(
-            self,
-            source_id: int,
-            target_id: int,
-            amount: float
+        self, source_id: int, target_id: int, amount: float
     ) -> models.Transfer:
         """
         Create a new transfer row in the db,
@@ -95,15 +78,20 @@ class Handler(object):
         if amount <= 0:
             raise ValueError(
                 "[Transfer] transfer amount is negative or 0, "
-                "when it should be positive")
+                "when it should be positive"
+            )
 
         utc_timestamp = utils.get_utc_timestamp()
         transfer_id = await self._db.insert(
             Tables.transfers,
-            "from_id", source_id,
-            "to_id", target_id,
-            "amount", amount,
-            "`utc_timestamp`", utc_timestamp,
+            "from_id",
+            source_id,
+            "to_id",
+            target_id,
+            "amount",
+            amount,
+            "`utc_timestamp`",
+            utc_timestamp,
         )
 
         transfer = models.Transfer(
@@ -124,23 +112,22 @@ class Handler(object):
         :return: the found balances
         """
         # Get account initial deposit
-        query = (
-            f"SELECT deposit FROM {Tables.accounts.value} "
-            f"WHERE id={account_id}")
+        query = f"SELECT deposit FROM {Tables.accounts.value} " f"WHERE id={account_id}"
         data = await self._db.execute(query)
         if not data:  # account does not exist
-            raise NotFoundException(
-                f"Account with id={account_id} doesn't exist")
+            raise NotFoundException(f"Account with id={account_id} doesn't exist")
         deposit = data[0][0]
 
         # fetch the credits and debits from the DB
         credit_rows, debit_rows = await asyncio.gather(
             self._db.execute(
                 f"SELECT amount FROM {Tables.transfers.value} "
-                f"WHERE to_id={account_id}"),
+                f"WHERE to_id={account_id}"
+            ),
             self._db.execute(
                 f"SELECT amount FROM {Tables.transfers.value} "
-                f"WHERE from_id={account_id}"),
+                f"WHERE from_id={account_id}"
+            ),
         )
 
         # get the amount only and compute the sum
@@ -151,17 +138,15 @@ class Handler(object):
             deposit=deposit,
             credits=credits,
             debits=debits,
-            balance=deposit + credits - debits
+            balance=deposit + credits - debits,
         )
         logger.debug(
-            f"Successfully got balances={balances} "
-            f"from account_id={account_id}")
+            f"Successfully got balances={balances} " f"from account_id={account_id}"
+        )
         return balances
 
     async def get_transfer_history(
-            self,
-            account_id: int,
-            type_: models.TransferType = models.TransferType.any
+        self, account_id: int, type_: models.TransferType = models.TransferType.any
     ) -> list[models.Transfer]:
         """
         Find in the db all transfers from or to the given account's id
@@ -177,8 +162,7 @@ class Handler(object):
         """
         # Check account existence
         if not await self.__account_exists(account_id):
-            raise NotFoundException(
-                f"Account with id={account_id} doesn't exist")
+            raise NotFoundException(f"Account with id={account_id} doesn't exist")
 
         credits, debits = [], []
         match type_:
@@ -194,7 +178,8 @@ class Handler(object):
         transfers = sorted(credits + debits, key=lambda t: t.utc_timestamp)
         logger.debug(
             f"Successfully fetched {len(transfers)} of type={type_.value} "
-            f"corresponding to account_id={account_id}")
+            f"corresponding to account_id={account_id}"
+        )
         return transfers
 
     async def __get_customer(self, customer: str) -> int:
@@ -227,7 +212,8 @@ class Handler(object):
         """
         query = (
             f"SELECT id, from_id, `utc_timestamp`, amount FROM {Tables.transfers.value} "
-            f"WHERE to_id={account_id}")
+            f"WHERE to_id={account_id}"
+        )
         rows = await self._db.execute(query)
         return [
             models.Transfer(
@@ -236,8 +222,9 @@ class Handler(object):
                 from_id=r[1],
                 to_id=account_id,
                 utc_timestamp=r[2],
-                amount=r[3]
-            ) for r in rows
+                amount=r[3],
+            )
+            for r in rows
         ]
 
     async def __get_debit_transfers(self, account_id: int) -> list[models.Transfer]:
@@ -247,7 +234,8 @@ class Handler(object):
         """
         query = (
             f"SELECT id, to_id, `utc_timestamp`, amount FROM {Tables.transfers.value} "
-            f"WHERE from_id={account_id}")
+            f"WHERE from_id={account_id}"
+        )
         rows = await self._db.execute(query)
         return [
             models.Transfer(
@@ -256,6 +244,7 @@ class Handler(object):
                 from_id=account_id,
                 to_id=r[1],
                 utc_timestamp=r[2],
-                amount=r[3]
-            ) for r in rows
+                amount=r[3],
+            )
+            for r in rows
         ]

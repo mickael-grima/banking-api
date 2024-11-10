@@ -42,13 +42,7 @@ class DBConnectionData:
         except ValueError as e:
             raise ValueError(f"Error: Wrong db port format: {port}!") from e
 
-        return cls(
-            host=host,
-            port=port,
-            user=user,
-            password=password,
-            dbname=dbname
-        )
+        return cls(host=host, port=port, user=user, password=password, dbname=dbname)
 
 
 class Database(object):
@@ -71,13 +65,18 @@ class Database(object):
         # The password is not logged (even debug) for security reasons
         logger.info(
             f"Connecting to Database=(address={data.host}:{data.port} "
-            f"creds={data.user}:xxx dbname={data.dbname} )")
+            f"creds={data.user}:xxx dbname={data.dbname} )"
+        )
 
         # create the pool
         self._pool = await aiomysql.create_pool(
-            host=data.host, port=data.port,
-            user=data.user, password=data.password,
-            db=data.dbname, autocommit=False)
+            host=data.host,
+            port=data.port,
+            user=data.user,
+            password=data.password,
+            db=data.dbname,
+            autocommit=False,
+        )
         return self
 
     def __del__(self):
@@ -101,15 +100,17 @@ class Database(object):
         This will create a table with the SQL query:
           CREATE TABLE transfers(id int NOT NULL AUTO_INCREMENT, from_id int, to_id int, utc_timestamp int, PRIMARY_KEY (id))
         """
-        fields = ", ".join([
-            f"{columns[2 * i]} {columns[2 * i + 1]}"
-            for i in range(int(len(columns) / 2))
-        ])
+        fields = ", ".join(
+            [
+                f"{columns[2 * i]} {columns[2 * i + 1]}"
+                for i in range(int(len(columns) / 2))
+            ]
+        )
         query = (
             f"CREATE TABLE IF NOT EXISTS {table.value}"
             f"(id int NOT NULL AUTO_INCREMENT, {fields}, PRIMARY KEY (id))"
         )
-        logger.info(f"[MySQL] Create new table from query=\"{query}\"")
+        logger.info(f'[MySQL] Create new table from query="{query}"')
         async with self._pool.acquire() as conn:
             async with conn.cursor() as curr:
                 await curr.execute(query)
@@ -120,24 +121,33 @@ class Database(object):
         Create the 3 tables: transfers, accounts, customers
         The creation happens only if they don't exist
         """
-        await asyncio.wait([
-            self.__create_table(
-                Tables.transfers,
-                "from_id", "int",
-                "to_id", "int",
-                "`utc_timestamp`", "int",
-                "amount", "double",
-            ),
-            self.__create_table(
-                Tables.accounts,
-                "owner_id", "int",
-                "deposit", "double",
-            ),
-            self.__create_table(
-                Tables.customers,
-                "name", "Varchar(1023)",
-            ),
-        ])
+        await asyncio.wait(
+            [
+                self.__create_table(
+                    Tables.transfers,
+                    "from_id",
+                    "int",
+                    "to_id",
+                    "int",
+                    "`utc_timestamp`",
+                    "int",
+                    "amount",
+                    "double",
+                ),
+                self.__create_table(
+                    Tables.accounts,
+                    "owner_id",
+                    "int",
+                    "deposit",
+                    "double",
+                ),
+                self.__create_table(
+                    Tables.customers,
+                    "name",
+                    "Varchar(1023)",
+                ),
+            ]
+        )
 
     async def insert(self, table: Tables, *field_values: str | int | float) -> int:
         """
@@ -159,7 +169,11 @@ class Database(object):
                 # collect field & values from field_values
                 fields = ", ".join(field_values[::2])
                 values = ", ".join(
-                    [f"{f}" if not isinstance(f, str) else f"'{f}'" for f in field_values[1::2]])
+                    [
+                        f"{f}" if not isinstance(f, str) else f"'{f}'"
+                        for f in field_values[1::2]
+                    ]
+                )
 
                 # request the DB
                 query = f"INSERT INTO {table.value} ({fields}) VALUES ({values})"
@@ -168,7 +182,8 @@ class Database(object):
                 await conn.commit()
                 logger.debug(
                     f"Successfully inserted new row fields=({fields}) values=({values}) "
-                    f"into table={table.value}")
+                    f"into table={table.value}"
+                )
                 return curr.lastrowid
 
     async def execute(self, query: str):

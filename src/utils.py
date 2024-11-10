@@ -19,7 +19,7 @@ def server_log_message(req: Request, status_code: int):
     Create a nice looking log for server responses
     """
     status_str = f"{status_code} {responses[status_code]}"
-    return f"\"{req.method} {req.url}\" {status_str}"
+    return f'"{req.method} {req.url}" {status_str}'
 
 
 def get_logger(name: str) -> logging.Logger:
@@ -33,14 +33,15 @@ def get_logger(name: str) -> logging.Logger:
     try:
         debug = bool(int(debug_env))
     except ValueError:
-        logging.exception(
-            f"DEBUG environment has the wrong format: {debug_env}")
+        logging.exception(f"DEBUG environment has the wrong format: {debug_env}")
         debug = False
 
     # create handler and formatter
     handler = logging.StreamHandler()
     handler.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
     handler.setFormatter(formatter)
 
     # set-up the logger

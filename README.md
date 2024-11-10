@@ -34,10 +34,10 @@ Here are the different endpoint provided by the API:
 1. This application follows the [twelve Factors-App principles](https://12factor.net/)
 2. The code follow strong principles: DRY, KISS, YAGNI, SoC.
 3. Only the asked features were implemented, and nothing more (KISS/YAGNI principles).
-The only necessary data to use the API endpoints are account ids, that's why a `GET /account` 
-endpoint has been added, so we have access to the different accounts ids. Many other 
+The only necessary data to use the API endpoints are account ids, that's why a `GET /account`
+endpoint has been added, so we have access to the different accounts ids. Many other
 endpoints could be added, such as `/customer` to create or get customers, but this would add
-unnecessary complexity not related to the task. This could be implemented in the future if 
+unnecessary complexity not related to the task. This could be implemented in the future if
 needed, of course
 
 ## Deploying locally

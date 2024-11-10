@@ -21,7 +21,7 @@ def test_get_utc_timestamp():
         (200, '"GET http://localhost:8080/ping" 200 OK'),
         (404, '"GET http://localhost:8080/ping" 404 Not Found'),
         (500, '"GET http://localhost:8080/ping" 500 Internal Server Error'),
-    ]
+    ],
 )
 def test_server_log_message(status_code: int, expected: str):
     req = Mock()
@@ -31,14 +31,13 @@ def test_server_log_message(status_code: int, expected: str):
     assert mess == expected
 
 
-
 @pytest.mark.parametrize(
     "debug,expected_level",
     [
         ("1", logging.DEBUG),
         ("0", logging.INFO),
         ("unknown", logging.INFO),
-    ]
+    ],
 )
 def test_get_logger(debug: str, expected_level: int):
     with set_environments({"DEBUG": debug}):

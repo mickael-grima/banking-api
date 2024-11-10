@@ -1,3 +1,6 @@
+# python
+__pycache__
+
 # tests related
 .tox
 .pytest_cache
@@ -9,3 +12,6 @@ htmlcov
 
 # mysql data
 .mysql
+
+# ide
+.idea
